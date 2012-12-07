@@ -1,4 +1,4 @@
-(defproject storm "0.8.1"
+(defproject storm "0.8.1-csd"
   :source-path "src/clj"
   :test-path "test/clj"
   :java-source-path "src/jvm"
@@ -13,6 +13,7 @@
                  [clj-time "0.4.1"]
                  [log4j/log4j "1.2.16"]
                  [com.netflix.curator/curator-framework "1.0.1"]
+                 [org.apache.zookeeper/zookeeper "3.4.3"]
                  [backtype/jzmq "2.1.0"]
                  [com.googlecode.json-simple/json-simple "1.1"]
                  [compojure "0.6.4"]
