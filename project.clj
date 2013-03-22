@@ -1,4 +1,4 @@
-(defproject storm "0.8.1-csd"
+(defproject storm "0.8.1-csd-2"
   :source-path "src/clj"
   :test-path "test/clj"
   :java-source-path "src/jvm"
@@ -21,7 +21,8 @@
                  [ring/ring-jetty-adapter "0.3.11"]
                  [org.clojure/tools.logging "0.2.3"]
                  [org.clojure/math.numeric-tower "0.0.1"]
-                 [org.slf4j/slf4j-log4j12 "1.5.8"]
+                 [org.slf4j/slf4j-api "1.7.2"]
+                 [org.slf4j/slf4j-log4j12 "1.7.2"]
                  [storm/carbonite "1.5.0"]
                  [org.yaml/snakeyaml "1.9"]
                  [org.apache.httpcomponents/httpclient "4.1.1"]
