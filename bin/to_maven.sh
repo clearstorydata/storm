@@ -92,10 +92,11 @@ for artifact_id in storm storm-lib; do
   done
   set +x
   mvn_common_args="-Dfile=$path_prefix.jar \
-                   -Dpomfile=$path_prefix.pom \
+                   -DpomFile=$path_prefix.pom \
                    -DgroupId=storm \
                    -DartifactId=$artifact_id \
                    -Dversion=$version \
+                   -DgeneratePom=false \
                    -Dpackaging=jar"
   mvn_common_args=$( echo $mvn_common_args )
   set -x
