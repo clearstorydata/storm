@@ -1,40 +1,123 @@
 #!/bin/bash
 
-time (
+if [ "$#" -ne 1 ]; then
+  cat >&2 <<EOT
+Usage: ${0##/} <action> [<options>]
+
+where <action> is
+
+  install - build and install storm and storm-lib to the local Maven repository
+  deploy - build and deploy storm and storm-lib to Maven repository
+
+EOT
+  exit 1
+fi
+
+action=$1
+if [ "$action" != "install" ] && [ "$action" != "deploy" ]; then
+  echo "Invalid action: $action" >&2
+  exit 1
+fi
+
+if [ "$action" == "deploy" ]; then
+  if [ -z "$MAVEN_REPOSITORY_ID" ] ||
+     [ -z "$MAVEN_REPOSITORY_URL" ]; then
+    echo "MAVEN_REPOSITORY_ID and MAVEN_REPOSITORY_URL must be set" >&2
+    exit 1
+  fi
+fi
 
 set -e -u -o pipefail -x
 cd $(dirname $0)/..
-mkdir -p target
 
-version=`head -1 project.clj | awk '{print $3}' | sed -e 's/\"//' | sed -e 's/\"//'`
+build() {
+  mkdir -p target
 
-# Build storm
-rm -rf classes
-rm -f *jar
-rm -f *xml
-rm -f pom.xml
+  version=`head -1 project.clj | awk '{print $3}' | sed -e 's/\"//' | sed -e 's/\"//'`
 
-lein jar
-lein pom
+  # Build storm jar and pom
+  if [ ! -f target/storm-$version.jar ] ||
+     [ ! -f target/storm-$version.pom ];
+  then
+    rm -rf classes
+    rm -f *.jar
+    rm -f *.xml
 
-mv -f storm-$version.jar target
-cp -f pom.xml target/storm-$version.pom
+    lein jar
+    lein pom
 
-# Build storm-lib
-rm -f *jar
-rm -rf classes
-rm -f conf/log4j.properties
+    mv -f storm-$version.jar target
+    cp -f pom.xml target/storm-$version.pom
+  fi
+  set +x
+  echo "storm jar/pom build complete"
+  set -x
 
-lein jar
-mv pom.xml old-pom.xml
-sed 's/artifactId\>storm/artifactId\>storm-lib/g' old-pom.xml > pom.xml
+  # Build storm-lib jar and pom
+  if [ ! -f target/storm-lib-$version.jar ] ||
+     [ ! -f target/storm-lib-$version.pom ]; 
+  then
+    rm -f *.jar
+    rm -rf classes
+    rm -f conf/log4j.properties
 
-mv -f storm-$version.jar target/storm-lib-$version.jar
-mv -f pom.xml target/storm-lib-$version.pom
+    lein jar
+    lein pom
+    mv pom.xml old-pom.xml
+    sed 's/artifactId\>storm/artifactId\>storm-lib/g' old-pom.xml > pom.xml
 
-rm -f *xml
-rm -f *jar
-git checkout conf/log4j.properties
+    mv -f storm-$version.jar target/storm-lib-$version.jar
+    mv -f pom.xml target/storm-lib-$version.pom
 
-)
+    rm -f *xml
+    rm -f *jar
+  fi
+  set +x
+  echo "storm-lib jar/pom build complete"
+  set -x
 
+  git checkout conf/log4j.properties
+}
+
+time build
+
+for artifact_id in storm storm-lib; do
+  path_prefix=target/$artifact_id-$version
+  for f in $path_prefix.jar $path_prefix.pom; do 
+    if [ ! -f "$f" ]; then
+      echo "File $f not found" >&2
+      exit 1
+    fi
+  done
+  set +x
+  mvn_common_args="-Dfile=$path_prefix.jar \
+                   -DpomFile=$path_prefix.pom \
+                   -Dversion=$version \
+                   -Dpackaging=jar"
+  mvn_common_args=$( echo $mvn_common_args )
+  set -x
+  case "$action" in
+    install)
+      mvn install:install-file \
+        $mvn_common_args \
+        -Dfile=$path_prefix.jar \
+        -Dpomfile=$path_prefix.pom \
+        -Dversion=$version \
+        -Dpackaging=jar \
+        -DartifactId=$artifact_id \
+        -DgroupId=storm
+      ;;
+    deploy)
+      set +e  # Ignore failures to deploy
+      mvn deploy:deploy-file \
+        $mvn_common_args \
+        -DrepositoryId=$MAVEN_REPOSITORY_ID \
+        -Durl=$MAVEN_REPOSITORY_URL
+      set -e
+      ;;
+    *)
+      set +x
+      echo "Invalid action: $action" >&2
+      exit 1
+  esac
+done
