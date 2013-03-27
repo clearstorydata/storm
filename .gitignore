@@ -21,4 +21,4 @@ _release
 *.zip
 .lein-deps-sum
 *.iml
-
+.idea
